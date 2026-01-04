@@ -102,4 +102,4 @@ This project is open source and available for educational purposes.
 
 ## Enjoy the Game!
 
-Complete all 10 levels and master the art of the Neon Courier!
+Complete with 20 levels and master the art of the Neon Courier!
