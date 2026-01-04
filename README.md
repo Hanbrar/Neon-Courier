@@ -98,8 +98,8 @@ Built with AI assistance. Learn how to create your own game at [buymeacoffee.com
 
 ## License
 
-This project is open source and available for educational purposes.
+This project is licensed under the MIT License - see the [LICENSE](LICENSE) file for details.
 
 ## Enjoy the Game!
 
-Complete with 20 levels and master the art of the Neon Courier!
+Complete all 20 levels and master the art of the Neon Courier!

@@ -664,8 +664,14 @@ const NeonCourier = () => {
   const [chipsCollected, setChipsCollected] = useState(0);
   const [chipsRequired, setChipsRequired] = useState(1);
   const [collectedChipPositions, setCollectedChipPositions] = useState(new Set());
-  const [score, setScore] = useState(0);
-  const [completedLevels, setCompletedLevels] = useState([]);
+  const [score, setScore] = useState(() => {
+    const saved = localStorage.getItem('neonCourierScore');
+    return saved ? parseInt(saved, 10) : 0;
+  });
+  const [completedLevels, setCompletedLevels] = useState(() => {
+    const saved = localStorage.getItem('neonCourierCompletedLevels');
+    return saved ? JSON.parse(saved) : [];
+  });
   const [message, setMessage] = useState('');
   const [isJumping, setIsJumping] = useState(false);
   const [inTunnel, setInTunnel] = useState(false);
@@ -693,8 +699,25 @@ const NeonCourier = () => {
   useEffect(() => { isJumpingRef.current = isJumping; }, [isJumping]);
   useEffect(() => { inTunnelRef.current = inTunnel; }, [inTunnel]);
 
-  const isLevelUnlocked = useCallback((idx) => idx === 0 || completedLevels.includes(idx - 1), [completedLevels]);
-  const initAudio = useCallback(() => { if (!audioContextRef.current) audioContextRef.current = createAudioContext(); return audioContextRef.current; }, []);
+  // Save progress to localStorage
+  useEffect(() => {
+    localStorage.setItem('neonCourierScore', score.toString());
+  }, [score]);
+
+  useEffect(() => {
+    localStorage.setItem('neonCourierCompletedLevels', JSON.stringify(completedLevels));
+  }, [completedLevels]);
+
+  const isLevelUnlocked = useCallback((idx) => {
+    return idx === 0 || completedLevels.includes(idx - 1);
+  }, [completedLevels]);
+
+  const initAudio = useCallback(() => {
+    if (!audioContextRef.current) {
+      audioContextRef.current = createAudioContext();
+    }
+    return audioContextRef.current;
+  }, []);
 
   const playBgMusic = useCallback(() => {
     if (!bgMusicRef.current) {
@@ -717,43 +740,129 @@ const NeonCourier = () => {
   }, [playBgMusic]);
 
   const playSound = useCallback((type) => {
-    const ctx = initAudio(); if (!ctx) return;
-    const osc = ctx.createOscillator(), gain = ctx.createGain();
-    if (type === 'pickup') { osc.frequency.setValueAtTime(880, ctx.currentTime); osc.frequency.exponentialRampToValueAtTime(1760, ctx.currentTime + 0.1); gain.gain.setValueAtTime(0.2, ctx.currentTime); gain.gain.exponentialRampToValueAtTime(0.01, ctx.currentTime + 0.2); }
-    else if (type === 'deliver') { osc.frequency.setValueAtTime(523.25, ctx.currentTime); osc.frequency.setValueAtTime(659.25, ctx.currentTime + 0.1); osc.frequency.setValueAtTime(783.99, ctx.currentTime + 0.2); gain.gain.setValueAtTime(0.2, ctx.currentTime); gain.gain.exponentialRampToValueAtTime(0.01, ctx.currentTime + 0.4); }
-    else if (type === 'panel') { osc.frequency.setValueAtTime(440, ctx.currentTime); osc.frequency.setValueAtTime(554.37, ctx.currentTime + 0.05); gain.gain.setValueAtTime(0.15, ctx.currentTime); gain.gain.exponentialRampToValueAtTime(0.01, ctx.currentTime + 0.15); }
-    else if (type === 'caught') { osc.type = 'sawtooth'; osc.frequency.setValueAtTime(200, ctx.currentTime); osc.frequency.exponentialRampToValueAtTime(50, ctx.currentTime + 0.5); gain.gain.setValueAtTime(0.3, ctx.currentTime); gain.gain.exponentialRampToValueAtTime(0.01, ctx.currentTime + 0.5); }
-    else if (type === 'jump') { osc.frequency.setValueAtTime(300, ctx.currentTime); osc.frequency.exponentialRampToValueAtTime(600, ctx.currentTime + 0.15); gain.gain.setValueAtTime(0.1, ctx.currentTime); gain.gain.exponentialRampToValueAtTime(0.01, ctx.currentTime + 0.15); }
-    else if (type === 'locked') { osc.type = 'square'; osc.frequency.setValueAtTime(150, ctx.currentTime); osc.frequency.setValueAtTime(100, ctx.currentTime + 0.1); gain.gain.setValueAtTime(0.15, ctx.currentTime); gain.gain.exponentialRampToValueAtTime(0.01, ctx.currentTime + 0.2); }
-    else return;
-    osc.connect(gain); gain.connect(ctx.destination); osc.start(); osc.stop(ctx.currentTime + 0.5);
+    const ctx = initAudio();
+    if (!ctx) return;
+
+    const osc = ctx.createOscillator();
+    const gain = ctx.createGain();
+
+    if (type === 'pickup') {
+      osc.frequency.setValueAtTime(880, ctx.currentTime);
+      osc.frequency.exponentialRampToValueAtTime(1760, ctx.currentTime + 0.1);
+      gain.gain.setValueAtTime(0.2, ctx.currentTime);
+      gain.gain.exponentialRampToValueAtTime(0.01, ctx.currentTime + 0.2);
+    } else if (type === 'deliver') {
+      osc.frequency.setValueAtTime(523.25, ctx.currentTime);
+      osc.frequency.setValueAtTime(659.25, ctx.currentTime + 0.1);
+      osc.frequency.setValueAtTime(783.99, ctx.currentTime + 0.2);
+      gain.gain.setValueAtTime(0.2, ctx.currentTime);
+      gain.gain.exponentialRampToValueAtTime(0.01, ctx.currentTime + 0.4);
+    } else if (type === 'panel') {
+      osc.frequency.setValueAtTime(440, ctx.currentTime);
+      osc.frequency.setValueAtTime(554.37, ctx.currentTime + 0.05);
+      gain.gain.setValueAtTime(0.15, ctx.currentTime);
+      gain.gain.exponentialRampToValueAtTime(0.01, ctx.currentTime + 0.15);
+    } else if (type === 'caught') {
+      osc.type = 'sawtooth';
+      osc.frequency.setValueAtTime(200, ctx.currentTime);
+      osc.frequency.exponentialRampToValueAtTime(50, ctx.currentTime + 0.5);
+      gain.gain.setValueAtTime(0.3, ctx.currentTime);
+      gain.gain.exponentialRampToValueAtTime(0.01, ctx.currentTime + 0.5);
+    } else if (type === 'jump') {
+      osc.frequency.setValueAtTime(300, ctx.currentTime);
+      osc.frequency.exponentialRampToValueAtTime(600, ctx.currentTime + 0.15);
+      gain.gain.setValueAtTime(0.1, ctx.currentTime);
+      gain.gain.exponentialRampToValueAtTime(0.01, ctx.currentTime + 0.15);
+    } else if (type === 'locked') {
+      osc.type = 'square';
+      osc.frequency.setValueAtTime(150, ctx.currentTime);
+      osc.frequency.setValueAtTime(100, ctx.currentTime + 0.1);
+      gain.gain.setValueAtTime(0.15, ctx.currentTime);
+      gain.gain.exponentialRampToValueAtTime(0.01, ctx.currentTime + 0.2);
+    } else {
+      return;
+    }
+
+    osc.connect(gain);
+    gain.connect(ctx.destination);
+    osc.start();
+    osc.stop(ctx.currentTime + 0.5);
   }, [initAudio]);
 
   const stopAudio = useCallback(() => {
-    oscillatorsRef.current.forEach(o => { try { o.stop(); } catch(e) {} });
+    oscillatorsRef.current.forEach(o => {
+      try {
+        o.stop();
+      } catch(e) {
+        // Oscillator already stopped
+      }
+    });
     oscillatorsRef.current = [];
     stopBgMusic();
   }, [stopBgMusic]);
 
   const loadLevel = useCallback((idx) => {
-    const level = LEVELS[idx]; if (!level) return;
-    playerRef.current = { x: level.playerStart.x * TILE_SIZE + TILE_SIZE/2, y: level.playerStart.y * TILE_SIZE + TILE_SIZE/2 };
-    dronesRef.current = level.drones.map(d => ({ ...d, currentX: d.x * TILE_SIZE + TILE_SIZE/2, currentY: d.y * TILE_SIZE + TILE_SIZE/2, pathIndex: 0, isChasing: false, alertTimer: 0, originalSpeed: d.speed }));
+    const level = LEVELS[idx];
+    if (!level) return;
+
+    playerRef.current = {
+      x: level.playerStart.x * TILE_SIZE + TILE_SIZE / 2,
+      y: level.playerStart.y * TILE_SIZE + TILE_SIZE / 2
+    };
+
+    dronesRef.current = level.drones.map(d => ({
+      ...d,
+      currentX: d.x * TILE_SIZE + TILE_SIZE / 2,
+      currentY: d.y * TILE_SIZE + TILE_SIZE / 2,
+      pathIndex: 0,
+      isChasing: false,
+      alertTimer: 0,
+      originalSpeed: d.speed
+    }));
+
     lasersRef.current = level.lasers.map(l => ({ ...l, currentAngle: l.angle }));
-    activatedPanelsRef.current = new Set(); jumpCooldownRef.current = false; spaceWasPressedRef.current = false; isJumpingRef.current = false;
+    activatedPanelsRef.current = new Set();
+    jumpCooldownRef.current = false;
+    spaceWasPressedRef.current = false;
+    isJumpingRef.current = false;
+
     const totalChips = level.totalChips || 1;
-    setChipsRequired(totalChips); setChipsCollected(0); setCollectedChipPositions(new Set());
-    chipsCollectedRef.current = 0; chipsRequiredRef.current = totalChips; collectedChipPositionsRef.current = new Set();
-    setMessage(level.description); setIsJumping(false); setInTunnel(false); setAlertFlash(false);
+    setChipsRequired(totalChips);
+    setChipsCollected(0);
+    setCollectedChipPositions(new Set());
+    chipsCollectedRef.current = 0;
+    chipsRequiredRef.current = totalChips;
+    collectedChipPositionsRef.current = new Set();
+
+    setMessage(level.description);
+    setIsJumping(false);
+    setInTunnel(false);
+    setAlertFlash(false);
     setTimeout(() => setMessage(''), 3000);
   }, []);
 
   const checkWallCollision = useCallback((x, y, level) => {
-    const tileX = Math.floor(x / TILE_SIZE), tileY = Math.floor(y / TILE_SIZE);
-    if (tileX < 0 || tileX >= level.width || tileY < 0 || tileY >= level.height) return true;
+    const tileX = Math.floor(x / TILE_SIZE);
+    const tileY = Math.floor(y / TILE_SIZE);
+
+    if (tileX < 0 || tileX >= level.width || tileY < 0 || tileY >= level.height) {
+      return true;
+    }
+
     const tile = level.map[tileY][tileX];
-    if (tile === TILES.DOOR) return !level.powerLinks?.some(link => link.doorPos.x === tileX && link.doorPos.y === tileY && activatedPanelsRef.current.has(`${link.panelPos.x},${link.panelPos.y}`));
-    if (tile === TILES.GAP && !isJumpingRef.current) return true;
+
+    if (tile === TILES.DOOR) {
+      return !level.powerLinks?.some(link =>
+        link.doorPos.x === tileX &&
+        link.doorPos.y === tileY &&
+        activatedPanelsRef.current.has(`${link.panelPos.x},${link.panelPos.y}`)
+      );
+    }
+
+    if (tile === TILES.GAP && !isJumpingRef.current) {
+      return true;
+    }
+
     return tile === TILES.WALL;
   }, []);
 
@@ -858,7 +967,7 @@ const NeonCourier = () => {
 
   const handleDevUnlock = useCallback(() => {
     const password = prompt('Enter dev password:');
-    if (password === 'helloworld') {
+    if (password === '3Ilovecooking,eating,reading9988') {
       const allLevels = LEVELS.map((_, i) => i);
       setCompletedLevels(allLevels);
       setMessage('✅ All levels unlocked!');
@@ -871,8 +980,39 @@ const NeonCourier = () => {
     }
   }, [playSound]);
 
-  const startLevel = useCallback((idx) => { if (!isLevelUnlocked(idx)) { playSound('locked'); setMessage('🔒 Complete previous level first!'); setTimeout(() => setMessage(''), 2000); return; } setCurrentLevel(idx); loadLevel(idx); setGameState('playing'); setAlertFlash(false); }, [loadLevel, isLevelUnlocked, playSound]);
-  const nextLevel = useCallback(() => { if (currentLevel < LEVELS.length - 1) startLevel(currentLevel + 1); else { setMessage('🎉 All levels complete!'); setGameState('menu'); } }, [currentLevel, startLevel]);
+  const handleClearProgress = useCallback(() => {
+    if (confirm('Are you sure you want to clear all progress? This cannot be undone.')) {
+      localStorage.removeItem('neonCourierScore');
+      localStorage.removeItem('neonCourierCompletedLevels');
+      setScore(0);
+      setCompletedLevels([]);
+      setMessage('🗑️ Progress cleared!');
+      setTimeout(() => setMessage(''), 2000);
+      playSound('locked');
+    }
+  }, [playSound]);
+
+  const startLevel = useCallback((idx) => {
+    if (!isLevelUnlocked(idx)) {
+      playSound('locked');
+      setMessage('🔒 Complete previous level first!');
+      setTimeout(() => setMessage(''), 2000);
+      return;
+    }
+    setCurrentLevel(idx);
+    loadLevel(idx);
+    setGameState('playing');
+    setAlertFlash(false);
+  }, [loadLevel, isLevelUnlocked, playSound]);
+
+  const nextLevel = useCallback(() => {
+    if (currentLevel < LEVELS.length - 1) {
+      startLevel(currentLevel + 1);
+    } else {
+      setMessage('🎉 All levels complete!');
+      setGameState('menu');
+    }
+  }, [currentLevel, startLevel]);
 
   const level = LEVELS[currentLevel];
   const cw = level ? level.width * TILE_SIZE : 640, ch = level ? level.height * TILE_SIZE : 480;
@@ -925,7 +1065,10 @@ const NeonCourier = () => {
               ); })}
             </div>
             <div className="text-gray-500 text-xs mb-2">WASD/Arrows • E interact • Space jump • ESC pause</div>
-            <button onClick={handleDevUnlock} className="px-3 py-1 bg-purple-900/50 border border-purple-500 hover:bg-purple-800/50 rounded text-xs">Dev</button>
+            <div className="flex gap-2">
+              <button onClick={handleDevUnlock} className="px-3 py-1 bg-purple-900/50 border border-purple-500 hover:bg-purple-800/50 rounded text-xs">Dev</button>
+              <button onClick={handleClearProgress} className="px-3 py-1 bg-red-900/50 border border-red-500 hover:bg-red-800/50 rounded text-xs">Clear Progress</button>
+            </div>
           </div>
         )}
         {gameState === 'paused' && (
