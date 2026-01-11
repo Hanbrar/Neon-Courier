@@ -909,8 +909,8 @@ const NeonCourier = () => {
 
     lasersRef.current.forEach(l => { l.currentAngle += l.rotationSpeed; });
 
-    if (!inTunnelRef.current) { for (const d of dronesRef.current) { if (Math.sqrt((player.x - d.currentX) ** 2 + (player.y - d.currentY) ** 2) < (PLAYER_SIZE + DRONE_SIZE) / 2) { playSound('caught'); setMessage('Caught!'); setTimeout(() => loadLevel(currentLevel), 1000); return; } } }
-    if (!isJumpingRef.current && !inTunnelRef.current && checkLaserCollision(player.x, player.y)) { playSound('caught'); setMessage('Laser hit!'); setTimeout(() => loadLevel(currentLevel), 1000); return; }
+    if (!inTunnelRef.current) { for (const d of dronesRef.current) { if (Math.sqrt((player.x - d.currentX) ** 2 + (player.y - d.currentY) ** 2) < (PLAYER_SIZE + DRONE_SIZE) / 2) { playSound('caught'); setMessage('Caught! Press R to retry'); setGameState('dead'); return; } } }
+    if (!isJumpingRef.current && !inTunnelRef.current && checkLaserCollision(player.x, player.y)) { playSound('caught'); setMessage('Laser hit! Press R to retry'); setGameState('dead'); return; }
 
     const tx = Math.floor(player.x / TILE_SIZE), ty = Math.floor(player.y / TILE_SIZE), tile = level.map[ty]?.[tx];
     if (tile === TILES.PICKUP) { const ck = `${tx},${ty}`; if (!collectedChipPositionsRef.current.has(ck)) { const nc = new Set(collectedChipPositionsRef.current); nc.add(ck); collectedChipPositionsRef.current = nc; setCollectedChipPositions(nc); chipsCollectedRef.current++; setChipsCollected(chipsCollectedRef.current); playSound('pickup'); setMessage(chipsCollectedRef.current >= chipsRequiredRef.current ? 'All chips! Deliver!' : `Chip ${chipsCollectedRef.current}/${chipsRequiredRef.current}`); setTimeout(() => setMessage(''), 2000); } }
@@ -950,6 +950,7 @@ const NeonCourier = () => {
     const kd = (e) => {
       keysRef.current[e.key.toLowerCase()] = true;
       if (e.key === 'Escape') { if (gameState === 'playing') setGameState('paused'); else if (gameState === 'paused') setGameState('playing'); }
+      if (gameState === 'dead' && e.key.toLowerCase() === 'r') { loadLevel(currentLevel); setGameState('playing'); }
       if (gameState === 'paused') { if (e.key.toLowerCase() === 'r') { loadLevel(currentLevel); setGameState('playing'); } else if (e.key.toLowerCase() === 'm') { setGameState('menu'); stopAudio(); } }
       if (gameState === 'levelComplete') { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); if (currentLevel < LEVELS.length - 1) nextLevel(); } else if (e.key.toLowerCase() === 'r') startLevel(currentLevel); else if (e.key.toLowerCase() === 'm') { setGameState('menu'); stopAudio(); } }
       if (gameState === 'menu' && e.key === 'Enter') { e.preventDefault(); startLevel(0); }
